@@ -7,12 +7,12 @@ from tf_keras.applications.mobilenet_v2 import decode_predictions
 import argostranslate.package
 import argostranslate.translate
 from PIL import ImageFont, ImageDraw, Image
+from ModelClass import FruitModel
 
+#CONFIG_PATH = "fruit_classifier_v2_dropout.h5"
+CONFIG_PATH = "fruit_classifier_fruit360.h5"
 # Load MobileNetV2 model pre-trained on ImageNet
-model = MobileNetV2(weights='imagenet')
-
-# Define specific fruits to detect: Banana and Lemon
-specific_fruits = ['banana', 'lemon']
+model = FruitModel(CONFIG_PATH)
 
 # Set the desired window size
 window_width = 1280
@@ -37,14 +37,13 @@ def translate_text(text, from_lang='en', to_lang='pt'):
 def draw_confidence_bar(frame, confidence, x=50, y=None, bar_width=1000, bar_height=40):
     if y is None:
         y = window_height - 100  # Place bar at the bottom of the window
-    filled_width = int(bar_width * (confidence / 20))  # Width filled based on confidence
+    filled_width = int(bar_width * (confidence/100.0))  # Width filled based on confidence
     # Draw the background of the bar (gray)
     cv2.rectangle(frame, (x, y), (x + bar_width, y + bar_height), (50, 50, 50), -1)
     # Draw the filled part of the bar (green)
     cv2.rectangle(frame, (x, y), (x + filled_width, y + bar_height), (0, 255, 0), -1)
     # Draw the confidence percentage text above the bar
     #make any value from confidence from 0 to 100
-    confidence = confidence * 5
     confidence = 100 if confidence > 100 else confidence
     cv2.putText(frame, f'{confidence:.2f}%', (x + bar_width + 20, y + bar_height - 10), 
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
@@ -71,7 +70,7 @@ def draw_text_with_pillow(frame, text, position=(50, 50), font_path="C:\\Windows
 # Function to classify specific fruits
 def classify_fruit():
     # Initialize webcam
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
     
     # Set the desired resolution for the window
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, window_width)
@@ -84,35 +83,32 @@ def classify_fruit():
     while True:
         ret, frame = cap.read()
         frame = cv2.flip(frame, 1)  # Flip the frame horizontally
-        #frame = cv2.imread("lemon.jpg")
+        #frame = cv2.imread("banana.jpeg")
         if not ret:
             print("Failed to grab frame")
             break
         
         # Resize the frame for the model input (224x224) for MobileNetV2 processing
-        img = cv2.resize(frame, (224, 224))
-        img = np.expand_dims(img, axis=0)
-        img = preprocess_input(img)  # Pre-process the image for MobileNetV2
-        
+        #img = cv2.resize(frame, (224, 224))
+        #img = np.expand_dims(img, axis=0)
+        #img = preprocess_input(img)  # Pre-process the image for MobileNetV2
         # Get predictions from the model
-        predictions = model.predict(img)
-        decoded_preds = decode_predictions(predictions, top=50)[0]  # Get top 3 predictions
+        fruit_found = model.predict(frame)
+        # decoded_preds = decode_predictions(predictions, top=50)[0]  # Get top 3 predictions
 
-        # Filter the predictions to show only specific fruits (banana, lemon)
-        fruit_found = None
-        for pred in decoded_preds:
-            fruit_name = pred[1]  # Class label (fruit name)
-            confidence = pred[2] * 100  # Confidence level as percentage
+        # # Filter the predictions to show only specific fruits (banana, lemon)
+        # fruit_found = None
+        # for pred in decoded_preds:
+        #     fruit_name = pred[1]  # Class label (fruit name)
+        #     confidence = pred[2] * 100  # Confidence level as percentage
             
-            if fruit_name in specific_fruits:
-                fruit_found = (fruit_name, confidence)
-                break
+        #     fruit_found = (fruit_name, confidence)
 
         frame = cv2.resize(frame, (window_width, window_height))
-
+        label, confidence = fruit_found
+        print(label,confidence)
         # If a fruit is detected, translate and display the result
-        if fruit_found:
-            label, confidence = fruit_found
+        if True:
             translated_label = translate_text(label, 'en', 'pt')
             translated_text = f"Fruta: {translated_label}"
 
